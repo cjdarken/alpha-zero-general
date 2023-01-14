@@ -22,7 +22,9 @@ class MCTS():
         self.Ns = {}  # stores #times board s was visited
         self.Ps = {}  # stores initial policy (returned by neural net)
 
-        self.Es = {}  # stores game.getGameEnded ended for board s
+        #self.Es = {}  # stores game.getGameEnded ended for board s
+        self.Ts = {}  # stores game.IsTerminal for board s
+        self.Ss = {}  # stores game.Score for board s
         self.Vs = {}  # stores game.getValidMoves for board s
 
     def getActionProb(self, canonicalBoard, temp=1):
@@ -74,11 +76,12 @@ class MCTS():
 
         s = self.game.stringRepresentation(canonicalBoard)
 
-        if s not in self.Es:
-            self.Es[s] = self.game.getGameEnded(canonicalBoard, 1)
-        if self.Es[s] != 0:
+        if s not in self.Ts:
+            self.Ts[s] = self.game.getIsTerminal(canonicalBoard, 1)
+            self.Ss[s] = self.game.getScore(canonicalBoard, 1)
+        if self.Ts[s]:
             # terminal node
-            return -self.Es[s]
+            return -self.Ss[s]
 
         if s not in self.Ps:
             # leaf node

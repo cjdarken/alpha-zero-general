@@ -70,6 +70,12 @@ class Game():
                small non-zero value for draw.
                
         """
+        raise Exception('getGameEnded has been replaced by getIsTerminal and getScore')
+
+    def getIsTerminal(self, board, player):
+        pass
+
+    def getScore(self, board, player):
         pass
 
     def getCanonicalForm(self, board, player):

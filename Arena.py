@@ -41,7 +41,7 @@ class Arena():
         curPlayer = 1
         board = self.game.getInitBoard()
         it = 0
-        while self.game.getGameEnded(board, curPlayer) == 0:
+        while not self.game.getIsTerminal(board, curPlayer):
             it += 1
             if verbose:
                 assert self.display
@@ -60,7 +60,7 @@ class Arena():
             assert self.display
             print("Game over: Turn ", str(it), "Result ", str(self.game.getGameEnded(board, 1)))
             self.display(board)
-        return curPlayer * self.game.getGameEnded(board, curPlayer)
+        return curPlayer * self.game.getScore(board, curPlayer)
 
     def playGames(self, num, verbose=False):
         """
@@ -79,9 +79,9 @@ class Arena():
         draws = 0
         for _ in tqdm(range(num), desc="Arena.playGames (1)"):
             gameResult = self.playGame(verbose=verbose)
-            if gameResult == 1:
+            if gameResult > 0:
                 oneWon += 1
-            elif gameResult == -1:
+            elif gameResult < 0:
                 twoWon += 1
             else:
                 draws += 1
@@ -90,9 +90,9 @@ class Arena():
 
         for _ in tqdm(range(num), desc="Arena.playGames (2)"):
             gameResult = self.playGame(verbose=verbose)
-            if gameResult == -1:
+            if gameResult < 0:
                 oneWon += 1
-            elif gameResult == 1:
+            elif gameResult > 0:
                 twoWon += 1
             else:
                 draws += 1
