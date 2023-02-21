@@ -4,6 +4,7 @@ import sys
 from collections import deque
 from pickle import Pickler, Unpickler
 from random import shuffle
+import hashlib
 
 import numpy as np
 from tqdm import tqdm
@@ -29,7 +30,7 @@ class Coach():
         self.trainExamplesHistory = []  # history of examples from args.numItersForTrainExamplesHistory latest iterations
         self.skipFirstSelfPlay = False  # can be overriden in loadTrainExamples()
 
-    def executeEpisode(self):
+    def executeEpisode(self, verbose=True):
         """
         This function executes one episode of self-play, starting with player 1.
         As the game is played, each turn is added as a training example to
@@ -56,16 +57,25 @@ class Coach():
             temp = int(episodeStep < self.args.tempThreshold)
 
             pi = self.mcts.getActionProb(canonicalBoard, temp=temp)
+            if verbose:
+                for i in range(len(pi)):
+                    if pi[i]>0:
+                        print(f'{i} {self.game.vectorIndexActionToAtlatl(i, canonicalBoard)} action prob {pi[i]}')
             sym = self.game.getSymmetries(canonicalBoard, pi)
             for b, p in sym:
                 trainExamples.append([b, self.curPlayer, p, None])
 
             action = np.random.choice(len(pi), p=pi)
             board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
-
+            if verbose:
+                print(f'selected action {action}')
+                s = self.game.stringRepresentation(board)
+                print(f'new actual game state {hashlib.sha256(s.encode("utf-8")).hexdigest()}')
+            
             if self.game.getIsTerminal(board, self.curPlayer):
                 r = self.game.getScore(board, self.curPlayer)
-                return [(x[0], x[2], r * ((-1) ** (x[1] != self.curPlayer))) for x in trainExamples] 
+                value =  [(x[0], x[2], r * ((-1) ** (x[1] != self.curPlayer))) for x in trainExamples] 
+                return value
 
     def learn(self):
         """

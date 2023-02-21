@@ -73,28 +73,34 @@ class Arena():
             draws:  games won by nobody
         """
 
+        scores = []
         num = int(num / 2)
         oneWon = 0
         twoWon = 0
         draws = 0
         for _ in tqdm(range(num), desc="Arena.playGames (1)"):
             gameResult = self.playGame(verbose=verbose)
+            scores.append(gameResult)
             if gameResult > 0:
                 oneWon += 1
             elif gameResult < 0:
                 twoWon += 1
             else:
                 draws += 1
+        print(f'scores {scores}')
 
         self.player1, self.player2 = self.player2, self.player1
 
+        scores = []
         for _ in tqdm(range(num), desc="Arena.playGames (2)"):
             gameResult = self.playGame(verbose=verbose)
+            scores.append(gameResult)
             if gameResult < 0:
                 oneWon += 1
             elif gameResult > 0:
                 twoWon += 1
             else:
                 draws += 1
+        print(f'scores {scores}')
 
         return oneWon, twoWon, draws

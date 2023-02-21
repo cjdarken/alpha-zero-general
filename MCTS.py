@@ -1,5 +1,6 @@
 import logging
 import math
+import hashlib
 
 import numpy as np
 
@@ -27,7 +28,7 @@ class MCTS():
         self.Ss = {}  # stores game.Score for board s
         self.Vs = {}  # stores game.getValidMoves for board s
 
-    def getActionProb(self, canonicalBoard, temp=1):
+    def getActionProb(self, canonicalBoard, temp=1, verbose=True):
         """
         This function performs numMCTSSims simulations of MCTS starting from
         canonicalBoard.
@@ -42,6 +43,11 @@ class MCTS():
         s = self.game.stringRepresentation(canonicalBoard)
         counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
 
+        if verbose:
+            for i in range(len(counts)):
+                if counts[i]>0:
+                    print(f'{i} {self.game.vectorIndexActionToAtlatl(i, canonicalBoard)} counts {counts[i]}')
+
         if temp == 0:
             bestAs = np.array(np.argwhere(counts == np.max(counts))).flatten()
             bestA = np.random.choice(bestAs)
@@ -54,7 +60,7 @@ class MCTS():
         probs = [x / counts_sum for x in counts]
         return probs
 
-    def search(self, canonicalBoard):
+    def search(self, canonicalBoard, verbose=True):
         """
         This function performs one iteration of MCTS. It is recursively called
         till a leaf node is found. The action chosen at each node is one that
@@ -75,12 +81,17 @@ class MCTS():
         """
 
         s = self.game.stringRepresentation(canonicalBoard)
+        if verbose:
+            print( f'searching hash {hashlib.sha256(s.encode("utf-8")).hexdigest()}' )
+            print(s)
 
         if s not in self.Ts:
             self.Ts[s] = self.game.getIsTerminal(canonicalBoard, 1)
             self.Ss[s] = self.game.getScore(canonicalBoard, 1)
         if self.Ts[s]:
             # terminal node
+            if verbose:
+                print(f'*** Terminal node with value {self.Ss[s]} ***')
             return -self.Ss[s]
 
         if s not in self.Ps:
@@ -102,6 +113,8 @@ class MCTS():
 
             self.Vs[s] = valids
             self.Ns[s] = 0
+            if verbose:
+                print(f'*** Leaf node with estimated value {-v} ***')
             return -v
 
         valids = self.Vs[s]
@@ -116,12 +129,18 @@ class MCTS():
                             1 + self.Nsa[(s, a)])
                 else:
                     u = self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
+                if verbose:
+                    actionPo = self.game.vectorIndexActionToAtlatl(a, canonicalBoard)
+                    print(f'{actionPo} nnet prob {self.Ps[s][a]} beauty {u}')
 
                 if u > cur_best:
                     cur_best = u
                     best_act = a
 
         a = best_act
+        if verbose:
+            actionPo = self.game.vectorIndexActionToAtlatl(a, canonicalBoard)
+            print(f'selected child with action {actionPo}')
         next_s, next_player = self.game.getNextState(canonicalBoard, 1, a)
         next_s = self.game.getCanonicalForm(next_s, next_player)
 
