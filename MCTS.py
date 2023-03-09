@@ -38,7 +38,8 @@ class MCTS():
                    proportional to Nsa[(s,a)]**(1./temp)
         """
         for i in range(self.args.numMCTSSims):
-            self.search(canonicalBoard)
+            current_player = 1 # Canonical board, so max player (+1) always on move
+            self.search(canonicalBoard, current_player)
 
         s = self.game.stringRepresentation(canonicalBoard)
         counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
@@ -60,7 +61,7 @@ class MCTS():
         probs = [x / counts_sum for x in counts]
         return probs
 
-    def search(self, canonicalBoard, verbose=True):
+    def search(self, canonicalBoard, current_player, verbose=True):
         """
         This function performs one iteration of MCTS. It is recursively called
         till a leaf node is found. The action chosen at each node is one that
@@ -72,12 +73,8 @@ class MCTS():
         outcome is propagated up the search path. The values of Ns, Nsa, Qsa are
         updated.
 
-        NOTE: the return values are the negative of the value of the current
-        state. This is done since v is in [-1,1] and if v is the value of a
-        state for the current player, then its value is -v for the other player.
-
         Returns:
-            v: the negative of the value of the current canonicalBoard
+            v: the value of the current canonicalBoard to the max player (player 1)
         """
 
         s = self.game.stringRepresentation(canonicalBoard)
@@ -92,11 +89,20 @@ class MCTS():
             # terminal node
             if verbose:
                 print(f'*** Terminal node with value {self.Ss[s]} ***')
-            return -self.Ss[s]
+            return self.Ss[s]
 
         if s not in self.Ps:
             # leaf node
             self.Ps[s], v = self.nnet.predict(canonicalBoard)
+            if self.args.heuristicEvalFn:
+                scenarioPo = canonicalBoard["param"]
+                statePo = canonicalBoard["state"]
+                blueAI = self.args.blueAI
+                redAI = self.args.redAI
+                value = self.args.heuristicEvalFn(scenarioPo, statePo, blueAI, redAI)
+                if verbose:
+                    print(f'Heuristic value estimate: {value}')
+                v += value
             valids = self.game.getValidMoves(canonicalBoard, 1)
             self.Ps[s] = self.Ps[s] * valids  # masking invalid moves
             sum_Ps_s = np.sum(self.Ps[s])
@@ -114,8 +120,8 @@ class MCTS():
             self.Vs[s] = valids
             self.Ns[s] = 0
             if verbose:
-                print(f'*** Leaf node with estimated value {-v} ***')
-            return -v
+                print(f'*** Leaf node with estimated value {v} ***')
+            return v
 
         valids = self.Vs[s]
         cur_best = -float('inf')
@@ -127,6 +133,7 @@ class MCTS():
                 if (s, a) in self.Qsa:
                     u = self.Qsa[(s, a)] + self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s]) / (
                             1 + self.Nsa[(s, a)])
+                    print(f'For action below: N {self.Nsa[(s,a)]} Q {self.Qsa[(s,a)]}')
                 else:
                     u = self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
                 if verbose:
@@ -140,11 +147,16 @@ class MCTS():
         a = best_act
         if verbose:
             actionPo = self.game.vectorIndexActionToAtlatl(a, canonicalBoard)
-            print(f'selected child with action {actionPo}')
+            print(f'searching child with action {actionPo}')
         next_s, next_player = self.game.getNextState(canonicalBoard, 1, a)
         next_s = self.game.getCanonicalForm(next_s, next_player)
 
-        v = self.search(next_s)
+        v = self.search(next_s, next_player)
+        if next_player != current_player:
+            v = -v
+
+        if verbose:
+            print( f'search result for {hashlib.sha256(s.encode("utf-8")).hexdigest()} is value {v}' )
 
         if (s, a) in self.Qsa:
             self.Qsa[(s, a)] = (self.Nsa[(s, a)] * self.Qsa[(s, a)] + v) / (self.Nsa[(s, a)] + 1)
@@ -155,4 +167,4 @@ class MCTS():
             self.Nsa[(s, a)] = 1
 
         self.Ns[s] += 1
-        return -v
+        return v

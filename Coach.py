@@ -63,7 +63,7 @@ class Coach():
                         print(f'{i} {self.game.vectorIndexActionToAtlatl(i, canonicalBoard)} action prob {pi[i]}')
             sym = self.game.getSymmetries(canonicalBoard, pi)
             for b, p in sym:
-                trainExamples.append([b, self.curPlayer, p, None])
+                trainExamples.append([b, self.curPlayer, p, None, canonicalBoard])
 
             action = np.random.choice(len(pi), p=pi)
             board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
@@ -74,8 +74,21 @@ class Coach():
             
             if self.game.getIsTerminal(board, self.curPlayer):
                 r = self.game.getScore(board, self.curPlayer)
-                value =  [(x[0], x[2], r * ((-1) ** (x[1] != self.curPlayer))) for x in trainExamples] 
-                return value
+
+                examples = []
+                for x in trainExamples:
+                    canonicalBoard = x[4]
+                    scenarioPo = canonicalBoard["param"]
+                    statePo = canonicalBoard["state"]
+                    blueAI = self.args.blueAI
+                    redAI = self.args.redAI
+                    target_value = r * ((-1) ** (x[1] != self.curPlayer))
+                    if self.args.heuristicEvalFn:
+                        predicted_value = self.args.heuristicEvalFn(scenarioPo, statePo, blueAI, redAI)
+                        target_value -= predicted_value
+                    examples.append( (x[0], x[2], target_value) )
+ 
+                return examples
 
     def learn(self):
         """
