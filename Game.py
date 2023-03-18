@@ -33,24 +33,21 @@ class Game():
         """
         pass
 
-    def getNextState(self, board, player, action):
+    def getNextState(self, board, action):
         """
         Input:
             board: current board
-            player: current player (1 or -1)
             action: action taken by current player
 
         Returns:
             nextBoard: board after applying action
-            nextPlayer: player who plays in the next turn (should be -player)
         """
         pass
 
-    def getValidMoves(self, board, player):
+    def getValidMoves(self, board):
         """
         Input:
             board: current board
-            player: current player
 
         Returns:
             validMoves: a binary vector of length self.getActionSize(), 1 for
@@ -59,30 +56,44 @@ class Game():
         """
         pass
 
-    def getGameEnded(self, board, player):
+    def getGameEnded(self, board):
         """
         Input:
             board: current board
-            player: current player (1 or -1)
 
         Returns:
-            r: 0 if game has not ended. 1 if player won, -1 if player lost,
+            r: 0 if game has not ended. 1 if current player won, -1 if player lost,
                small non-zero value for draw.
                
         """
         raise Exception('getGameEnded has been replaced by getIsTerminal and getScore')
 
-    def getIsTerminal(self, board, player):
-        pass
-
-    def getScore(self, board, player):
-        pass
-
-    def getCanonicalForm(self, board, player):
+    def getIsTerminal(self, board):
         """
         Input:
             board: current board
-            player: current player (1 or -1)
+
+        Returns:
+            r: False if game has not ended, otherwise True. 
+               
+        """
+        pass
+
+    def getScore(self, board):
+        """
+        Input:
+            board: current board
+
+        Returns:
+            r: Current game score
+               
+        """
+        pass
+
+    def getCanonicalForm(self, board):
+        """
+        Input:
+            board: current board
 
         Returns:
             canonicalBoard: returns canonical form of board. The canonical form
@@ -104,6 +115,16 @@ class Game():
             symmForms: a list of [(board,pi)] where each tuple is a symmetrical
                        form of the board and the corresponding pi vector. This
                        is used when training the neural network from examples.
+        """
+        pass
+
+    def getPlayerOnMove(self, board):
+        """
+        Input:
+            board: current board
+
+        Returns:
+            player: current player (1 or -1)
         """
         pass
 

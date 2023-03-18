@@ -30,7 +30,7 @@ class Coach():
         self.trainExamplesHistory = []  # history of examples from args.numItersForTrainExamplesHistory latest iterations
         self.skipFirstSelfPlay = False  # can be overriden in loadTrainExamples()
 
-    def executeEpisode(self, verbose=True):
+    def executeEpisode(self, verbose=False):
         """
         This function executes one episode of self-play, starting with player 1.
         As the game is played, each turn is added as a training example to
@@ -53,7 +53,7 @@ class Coach():
 
         while True:
             episodeStep += 1
-            canonicalBoard = self.game.getCanonicalForm(board, self.curPlayer)
+            canonicalBoard = self.game.getCanonicalForm(board)
             temp = int(episodeStep < self.args.tempThreshold)
 
             pi = self.mcts.getActionProb(canonicalBoard, temp=temp)
@@ -66,14 +66,14 @@ class Coach():
                 trainExamples.append([b, self.curPlayer, p, None, canonicalBoard])
 
             action = np.random.choice(len(pi), p=pi)
-            board, self.curPlayer = self.game.getNextState(board, self.curPlayer, action)
+            board = self.game.getNextState(board, action)
             if verbose:
                 print(f'selected action {action}')
                 s = self.game.stringRepresentation(board)
                 print(f'new actual game state {hashlib.sha256(s.encode("utf-8")).hexdigest()}')
             
-            if self.game.getIsTerminal(board, self.curPlayer):
-                r = self.game.getScore(board, self.curPlayer)
+            if self.game.getIsTerminal(board):
+                r = self.game.getScore(board)
 
                 examples = []
                 for x in trainExamples:

@@ -28,7 +28,7 @@ class MCTS():
         self.Ss = {}  # stores game.Score for board s
         self.Vs = {}  # stores game.getValidMoves for board s
 
-    def getActionProb(self, canonicalBoard, temp=1, verbose=True):
+    def getActionProb(self, canonicalBoard, temp=1, verbose=False):
         """
         This function performs numMCTSSims simulations of MCTS starting from
         canonicalBoard.
@@ -38,8 +38,7 @@ class MCTS():
                    proportional to Nsa[(s,a)]**(1./temp)
         """
         for i in range(self.args.numMCTSSims):
-            current_player = 1 # Canonical board, so max player (+1) always on move
-            self.search(canonicalBoard, current_player)
+            self.search(canonicalBoard)
 
         s = self.game.stringRepresentation(canonicalBoard)
         counts = [self.Nsa[(s, a)] if (s, a) in self.Nsa else 0 for a in range(self.game.getActionSize())]
@@ -61,7 +60,7 @@ class MCTS():
         probs = [x / counts_sum for x in counts]
         return probs
 
-    def search(self, canonicalBoard, current_player, verbose=True):
+    def search(self, actualBoard, verbose=False):
         """
         This function performs one iteration of MCTS. It is recursively called
         till a leaf node is found. The action chosen at each node is one that
@@ -77,14 +76,15 @@ class MCTS():
             v: the value of the current canonicalBoard to the max player (player 1)
         """
 
+        canonicalBoard = self.game.getCanonicalForm(actualBoard)
         s = self.game.stringRepresentation(canonicalBoard)
         if verbose:
             print( f'searching hash {hashlib.sha256(s.encode("utf-8")).hexdigest()}' )
             print(s)
 
         if s not in self.Ts:
-            self.Ts[s] = self.game.getIsTerminal(canonicalBoard, 1)
-            self.Ss[s] = self.game.getScore(canonicalBoard, 1)
+            self.Ts[s] = self.game.getIsTerminal(canonicalBoard)
+            self.Ss[s] = self.game.getScore(canonicalBoard)
         if self.Ts[s]:
             # terminal node
             if verbose:
@@ -103,7 +103,7 @@ class MCTS():
                 if verbose:
                     print(f'Heuristic value estimate: {value}')
                 v += value
-            valids = self.game.getValidMoves(canonicalBoard, 1)
+            valids = self.game.getValidMoves(canonicalBoard)
             self.Ps[s] = self.Ps[s] * valids  # masking invalid moves
             sum_Ps_s = np.sum(self.Ps[s])
             if sum_Ps_s > 0:
@@ -133,12 +133,14 @@ class MCTS():
                 if (s, a) in self.Qsa:
                     u = self.Qsa[(s, a)] + self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s]) / (
                             1 + self.Nsa[(s, a)])
-                    print(f'For action below: N {self.Nsa[(s,a)]} Q {self.Qsa[(s,a)]}')
+                    if verbose:
+                        print(f'For action below: N {self.Nsa[(s,a)]} Q {self.Qsa[(s,a)]}')
                 else:
                     u = self.args.cpuct * self.Ps[s][a] * math.sqrt(self.Ns[s] + EPS)  # Q = 0 ?
                 if verbose:
                     actionPo = self.game.vectorIndexActionToAtlatl(a, canonicalBoard)
-                    print(f'{actionPo} nnet prob {self.Ps[s][a]} beauty {u}')
+                    if verbose:
+                        print(f'{actionPo} nnet prob {self.Ps[s][a]} beauty {u}')
 
                 if u > cur_best:
                     cur_best = u
@@ -148,11 +150,13 @@ class MCTS():
         if verbose:
             actionPo = self.game.vectorIndexActionToAtlatl(a, canonicalBoard)
             print(f'searching child with action {actionPo}')
-        next_s, next_player = self.game.getNextState(canonicalBoard, 1, a)
-        next_s = self.game.getCanonicalForm(next_s, next_player)
+        next_s = self.game.getNextState(canonicalBoard, a)
+        #next_s = self.game.getCanonicalForm(next_s)
 
-        v = self.search(next_s, next_player)
-        if next_player != current_player:
+        v = self.search(next_s)
+        canonical_player = self.game.getPlayerOnMove(canonicalBoard)
+        next_player = self.game.getPlayerOnMove(next_s)
+        if canonical_player != next_player:
             v = -v
 
         if verbose:
